@@ -1,10 +1,16 @@
 # Personalized Federated Learning Platform
 
-***We expose this user-friendly platform for biginners who intend to start federated learning (FL) study.***
+[![DOI](https://zenodo.org/badge/292225878.svg)](https://zenodo.org/badge/latestdoi/292225878)
 
-The origin of the **statistical heterogeneity** phenomenon is the personalization of users, who generate the non-IID (not Independent and Identically Distributed) or unbalanced data. With statistical heterogeneity existing in the FL setting, a myriad of approaches have been proposed to crack this hard nut. In contrast, the personalized FL (pFL) may take the advantage of the statistically heterogeneious data to learn the personalized model for each user. 
+***We expose this user-friendly platform for beginners who intend to start federated learning (FL) study.***
 
-Thanks to [@Stonesjtu](https://github.com/Stonesjtu/pytorch_memlab/blob/d590c489236ee25d157ff60ecd18433e8f9acbe3/pytorch_memlab/mem_reporter.py#L185), this platform can also record the **GPU memory usage** for the model. By using the package [opacus](https://opacus.ai/), I introduce **differential privacy** into this platform (please refer to `./system/flcore/clients/clientavg.py` for example). 
+***Now there are 23 FL (or pFL) methods, three scenarios, and 14 datasets in this platform.***
+
+Due to the frequent update, please download the **master branch** as the latest version.
+
+The origin of the **statistical heterogeneity** phenomenon is the personalization of users, who generate the non-IID (not Independent and Identically Distributed) and unbalanced data. With statistical heterogeneity existing in the FL scenario, a myriad of approaches have been proposed to crack this hard nut. In contrast, the personalized FL (pFL) may take the advantage of the statistically heterogeneious data to learn the personalized model for each user. 
+
+Thanks to [@Stonesjtu](https://github.com/Stonesjtu/pytorch_memlab/blob/d590c489236ee25d157ff60ecd18433e8f9acbe3/pytorch_memlab/mem_reporter.py#L185), this platform can also record the **GPU memory usage** for the model. By using the package [opacus](https://opacus.ai/), we introduce **DP (differential privacy)** into this platform (please refer to `./system/flcore/clients/clientavg.py` for example). Following [FedCG](https://www.ijcai.org/proceedings/2022/0324), we also introduce the **[DLG (Deep Leakage from Gradients)](https://papers.nips.cc/paper_files/paper/2019/hash/60a6c4002cc7b29142def8871531281a-Abstract.html) attack** and **PSNR (Peak Signal-to-Noise Ratio) metric** to evaluate the privacy-preserving ability of FL/pFL methods (please refer to `./system/flcore/servers/serveravg.py` for example). *Now we can train on some clients and evaluate on other new clients by setting `args.num_new_clients` in `./system/main.py`. Note that not all the FL/pFL methods support this feature.*
 
 
 ## Methods with Code (updating)
@@ -13,14 +19,22 @@ Thanks to [@Stonesjtu](https://github.com/Stonesjtu/pytorch_memlab/blob/d590c489
 
 - **FedAvg** — [Communication-Efficient Learning of Deep Networks from Decentralized Data](http://proceedings.mlr.press/v54/mcmahan17a.html) *AISTATS 2017*
 
+  ***Update-correction-based FL***
+
+- **SCAFFOLD** - [SCAFFOLD: Stochastic Controlled Averaging for Federated Learning](http://proceedings.mlr.press/v119/karimireddy20a.html) *ICML 2020*
+
   ***Regularization-based FL***
 
 - **FedProx** — [Federated Optimization in Heterogeneous Networks](https://proceedings.mlsys.org/paper/2020/hash/38af86134b65d0f10fe33d30dd76442e-Abstract.html) *MLsys 2020*
 - **FedDyn** — [Federated Learning Based on Dynamic Regularization](https://openreview.net/forum?id=B7v4QMR6Z9w) *ICLR 2021*
 
-  ***Feature (representation) -based FL***
+  ***Representation-based FL***
 
 - **MOON** — [Model-Contrastive Federated Learning](https://openaccess.thecvf.com/content/CVPR2021/html/Li_Model-Contrastive_Federated_Learning_CVPR_2021_paper.html) *CVPR 2021*
+
+  ***Knowledge-distillation-based FL***
+
+- **FedGen** — [Data-Free Knowledge Distillation for Heterogeneous Federated Learning](http://proceedings.mlr.press/v139/zhu21b.html) *ICML 2021*
 
 > ### Personalized FL
 
@@ -29,7 +43,7 @@ Thanks to [@Stonesjtu](https://github.com/Stonesjtu/pytorch_memlab/blob/d590c489
 
   ***Meta-learning-based pFL***
 
-- **Per-FadAvg** — [Personalized Federated Learning with Theoretical Guarantees: A Model-Agnostic Meta-Learning Approach](https://proceedings.neurips.cc/paper/2020/hash/24389bfe4fe2eba8bf9aa9203a44cdad-Abstract.html) *NeurIPS 2020*
+- **Per-FedAvg** — [Personalized Federated Learning with Theoretical Guarantees: A Model-Agnostic Meta-Learning Approach](https://proceedings.neurips.cc/paper/2020/hash/24389bfe4fe2eba8bf9aa9203a44cdad-Abstract.html) *NeurIPS 2020*
 
   ***Regularization-based pFL***
   
@@ -38,27 +52,32 @@ Thanks to [@Stonesjtu](https://github.com/Stonesjtu/pytorch_memlab/blob/d590c489
 
   ***Personalized-aggregation-based pFL***
 
-- **APFL** — [Adaptive Personalized Federated Learning](https://arxiv.org/pdf/2003.13461.pdf)
+- **APFL** — [Adaptive Personalized Federated Learning](https://arxiv.org/abs/2003.13461) *2020* 
 - **FedFomo** — [Personalized Federated Learning with First Order Model Optimization](https://openreview.net/forum?id=ehJqJQk9cw) *ICLR 2021*
 - **FedAMP** — [Personalized Cross-Silo Federated Learning on non-IID Data](https://ojs.aaai.org/index.php/AAAI/article/view/16960) *AAAI 2021*
 - **FedPHP** — [FedPHP: Federated Personalization with Inherited Private Models](https://link.springer.com/chapter/10.1007/978-3-030-86486-6_36) *ECML PKDD 2021*
 - **APPLE** — [Adapt to Adaptation: Learning Personalization for Cross-Silo Federated Learning](https://www.ijcai.org/proceedings/2022/301) *IJCAI 2022*
+- **FedALA** — [FedALA: Adaptive Local Aggregation for Personalized Federated Learning](https://arxiv.org/abs/2212.01197) *AAAI 2023*
 
-  ***Feature (representation) -based pFL***
+  ***Feature-extraction-based pFL***
 
-- **FedPer** — [Federated Learning with Personalization Layers](https://arxiv.org/pdf/1912.00818.pdf)
+- **FedPer** — [Federated Learning with Personalization Layers](https://arxiv.org/abs/1912.00818) *2019*
 - **FedRep** — [Exploiting Shared Representations for Personalized Federated Learning](http://proceedings.mlr.press/v139/collins21a.html) *ICML 2021*
 - **FedRoD** — [On Bridging Generic and Personalized Federated Learning for Image Classification](https://openreview.net/forum?id=I1hQbx10Kxn) *ICLR 2022*
-- **FedProto** — [FedProto: Federated Prototype Learning across Heterogeneous Clients ](https://ojs.aaai.org/index.php/AAAI/article/view/20819) *AAAI 2022*
 - **FedBABU** — [Fedbabu: Towards enhanced representation for federated image classification](https://openreview.net/forum?id=HuaYQfggn5u) *ICLR 2022*
 
+  ***Knowledge-distillation-based pFL***
+  
+- **FedDistill** — [Federated Knowledge Distillation](https://www.cambridge.org/core/books/abs/machine-learning-and-wireless-communications/federated-knowledge-distillation/F679266F85493319EB83635D2B17C2BD#access-block) *2020*
+
+- **FedProto** — [FedProto: Federated Prototype Learning across Heterogeneous Clients](https://ojs.aaai.org/index.php/AAAI/article/view/20819) *AAAI 2022*
 
 ## Datasets and Separation (updating)
-For the ***label skew*** setting, I introduce **8** famous datasets: **MNIST**, **Fashion-MNIST**, **Cifar10**, **Cifar100**, **AG_News**, **Sogou_News** (If ConnectionError raises, please use the given downloaded file in `./dataset`), and **Tiny-ImageNet** (fetch raw data from [this site](http://cs231n.stanford.edu/tiny-imagenet-200.zip)), they can be easy split into **IID** and **non-IID** version. Since some codes for generating datasets such as splitting are the same for all datasets, I move these codes into `./dataset/utils/dataset_utils.py`. In **non-IID** setting, two situations exist. The first one is the **pathological non-IID** setting, the second one is **practical non-IID** setting. In the **pathological non-IID** setting, for example, the data on each client only contains the specific number of labels (maybe only two labels), though the data on all clients contains 10 labels such as MNIST dataset. In the **practical non-IID** setting, Dirichlet distribution is utilized (please refer to this [paper](https://proceedings.neurips.cc/paper/2020/hash/18df51b97ccd68128e994804f3eccc87-Abstract.html) for details). We can input *balance* for the iid setting, where the data are uniformly distributed. 
+For the ***label skew*** scenario, we introduce **8** famous datasets: **MNIST**, **Fashion-MNIST**, **Cifar10**, **Cifar100**, **AG_News**, **Sogou_News**, and **Tiny-ImageNet** (fetch raw data from [this site](http://cs231n.stanford.edu/tiny-imagenet-200.zip)), they can be easy split into **IID** and **non-IID** version. Since some codes for generating datasets such as splitting are the same for all datasets, we move these codes into `./dataset/utils/dataset_utils.py`. In **non-IID** scenario, two situations exist. The first one is the **pathological non-IID** scenario, the second one is **practical non-IID** scenario. In the **pathological non-IID** scenario, for example, the data on each client only contains the specific number of labels (maybe only two labels), though the data on all clients contains 10 labels such as MNIST dataset. In the **practical non-IID** scenario, Dirichlet distribution is utilized (please refer to this [paper](https://proceedings.neurips.cc/paper/2020/hash/18df51b97ccd68128e994804f3eccc87-Abstract.html) for details). We can input `balance` for the iid scenario, where the data are uniformly distributed. 
 
-For the ***feature shift*** setting, I use one dataset that widely used in Domain Adaptation: **AmazonReview** (fetch raw data from [this site](https://drive.google.com/file/d/1QbXFENNyqor1IlCpRRFtOluI2_hMEd1W/view?usp=sharing)), **Digit5** (fetch raw data from [this site](https://drive.google.com/file/d/1PT6K-_wmsUEUCxoYzDy0mxF-15tvb2Eu/view?usp=share_link)), and **DomainNet**.
+For the ***feature shift*** scenario, we use **three** datasets that are widely used in Domain Adaptation: **AmazonReview** (fetch raw data from [this site](https://drive.google.com/file/d/1QbXFENNyqor1IlCpRRFtOluI2_hMEd1W/view?usp=sharing)), **Digit5** (fetch raw data from [this site](https://drive.google.com/file/d/1PT6K-_wmsUEUCxoYzDy0mxF-15tvb2Eu/view?usp=share_link)), and **DomainNet**.
 
-For the ***real-world (or IoT)*** setting, I also introduce one naturally separated dataset: **Omniglot** (20 clients, 50 labels), **HAR (Human Activity Recognition)** (30 clients, 6 labels), **PAMAP2** (9 clients, 12 labels). For the details of datasets and FL methods in **IoT**, please refer to [my FL-IoT repo](https://github.com/TsingZ0/FL-IoT).
+For the ***real-world (or IoT)*** scenario, we also introduce **three** naturally separated datasets: **Omniglot** (20 clients, 50 labels), **HAR (Human Activity Recognition)** (30 clients, 6 labels), **PAMAP2** (9 clients, 12 labels). For the details of datasets and FL methods in **IoT**, please refer to [my FL-IoT repo](https://github.com/TsingZ0/FL-IoT).
 
 *If you need another data set, just write another code to download it and then using the utils.*
 
@@ -66,10 +85,10 @@ For the ***real-world (or IoT)*** setting, I also introduce one naturally separa
 - MNIST
     ```
     cd ./dataset
-    python generate_mnist.py iid - - # for iid and unbalanced setting
-    # python generate_mnist.py iid balance - # for iid and balanced setting
-    # python generate_mnist.py noniid - pat # for pathological noniid and unbalanced setting
-    # python generate_mnist.py noniid - dir # for practical noniid and unbalanced setting
+    python generate_mnist.py iid - - # for iid and unbalanced scenario
+    # python generate_mnist.py iid balance - # for iid and balanced scenario
+    # python generate_mnist.py noniid - pat # for pathological noniid and unbalanced scenario
+    # python generate_mnist.py noniid - dir # for practical noniid and unbalanced scenario
     ```
 
 The output of `generate_mnist.py iid - -`
@@ -586,8 +605,8 @@ Client 2         Samples of labels:  [(0, 75), (1, 107), (3, 130), (7, 291), (8,
 - for AG_News and Sogou_News
 
     1. LSTM()
-    2. fastText() in [Bag of Tricks for Efficient Text Classification](https://arxiv.org/abs/1607.01759)
-    3. TextCNN() in [Convolutional Neural Networks for Sentence Classification](https://arxiv.org/abs/1408.5882)
+    2. fastText() in [Bag of Tricks for Efficient Text Classification](https://aclanthology.org/E17-2068/) 
+    3. TextCNN() in [Convolutional Neural Networks for Sentence Classification](https://aclanthology.org/D14-1181/)
     4. *TransformerModel() in [Attention is all you need](https://proceedings.neurips.cc/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html)
 
 - for AmazonReview
@@ -601,11 +620,12 @@ Client 2         Samples of labels:  [(0, 75), (1, 107), (3, 130), (7, 291), (8,
 Note: * means "in progress".
 
 ## Environments
+Install [CUDA](https://developer.nvidia.com/cuda-11-6-0-download-archive) first. 
+
 With the installed [conda](https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh), we can run this platform in a conda virtual environment called *fl_torch*. 
 
-Note: Due to the code updates, some modules may be required to install based on the given `*.yaml`. 
-
 ```bash
+conda config --set channel_priority strict
 conda env create -f env_cuda_116.yaml 
 # conda env create -f env_cuda_102.yaml 
 ```
@@ -626,8 +646,8 @@ conda env create -f env_cuda_116.yaml
 
 **Note**: The hyper-parameters have not been tuned for the methods. The values in `./system/examples.sh` are just examples. You need to tune the hyper-parameters by yourself. 
 
-## Practical setting
-If you need to simulate FL in a practical setting, which includes **client dropout**, **slow trainers**, **slow senders**, and **network TTL**, you can set the following parameters to realize it.
+## Practical scenario
+If you need to simulate FL in a practical scenario, which includes **client dropout**, **slow trainers**, **slow senders**, and **network TTL**, you can set the following parameters to realize it.
 
 - `-cdr`: The dropout rate for total clients. The selected clients will randomly drop at each training round.
 - `-tsr` and `-ssr`: The rates for slow trainers and slow senders among all clients. Once a client was selected as "slow trainers", for example, it will always train slower than the original one. So does "slow senders". 

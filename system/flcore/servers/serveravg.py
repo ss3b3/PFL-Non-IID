@@ -10,7 +10,7 @@ class FedAvg(Server):
 
         # select slow clients
         self.set_slow_clients()
-        self.set_clients(args, clientAVG)
+        self.set_clients(clientAVG)
 
         print(f"\nJoin ratio / total clients: {self.join_ratio} / {self.num_clients}")
         print("Finished creating server and clients.")
@@ -39,10 +39,15 @@ class FedAvg(Server):
             # [t.join() for t in threads]
 
             self.receive_models()
+            if self.dlg_eval and i%self.dlg_gap == 0:
+                self.call_dlg(i)
             self.aggregate_parameters()
 
             self.Budget.append(time.time() - s_t)
             print('-'*25, 'time cost', '-'*25, self.Budget[-1])
+
+            if self.auto_break and self.check_done(acc_lss=[self.rs_test_acc], top_cnt=self.top_cnt):
+                break
 
         print("\nBest accuracy.")
         # self.print_(max(self.rs_test_acc), max(
@@ -53,3 +58,10 @@ class FedAvg(Server):
 
         self.save_results()
         self.save_global_model()
+
+        if self.num_new_clients > 0:
+            self.eval_new_clients = True
+            self.set_new_clients(clientAVG)
+            print(f"\n-------------Fine tuning round-------------")
+            print("\nEvaluate new clients")
+            self.evaluate()

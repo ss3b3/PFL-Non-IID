@@ -19,9 +19,12 @@ class clientpFedMe(Client):
         self.local_params = copy.deepcopy(list(self.model.parameters()))
         self.personalized_params = copy.deepcopy(list(self.model.parameters()))
 
-        self.loss = nn.CrossEntropyLoss()
         self.optimizer = pFedMeOptimizer(
             self.model.parameters(), lr=self.personalized_learning_rate, lamda=self.lamda)
+        self.learning_rate_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer=self.optimizer, 
+            gamma=args.learning_rate_decay_gamma
+        )
 
     def train(self):
         trainloader = self.load_train_data()
@@ -30,7 +33,7 @@ class clientpFedMe(Client):
         # self.model.to(self.device)
         self.model.train()
 
-        max_local_steps = self.local_steps
+        max_local_steps = self.local_epochs
         if self.train_slow:
             max_local_steps = np.random.randint(1, max_local_steps // 2)
 
@@ -46,9 +49,9 @@ class clientpFedMe(Client):
 
                 # K is number of personalized steps
                 for i in range(self.K):
-                    self.optimizer.zero_grad()
                     output = self.model(x)
                     loss = self.loss(output, y)
+                    self.optimizer.zero_grad()
                     loss.backward()
                     # finding aproximate theta
                     self.personalized_params = self.optimizer.step(self.local_params, self.device)
@@ -59,6 +62,9 @@ class clientpFedMe(Client):
                     localweight.data = localweight.data - self.lamda * self.learning_rate * (localweight.data - new_param.data)
 
         # self.model.cpu()
+
+        if self.learning_rate_decay:
+            self.learning_rate_scheduler.step()
 
         self.update_parameters(self.model, self.local_params)
 
@@ -95,25 +101,34 @@ class clientpFedMe(Client):
         
         return test_acc, test_num
 
-    # def train_metrics_personalized(self):
-    #     self.update_parameters(self.model, self.personalized_params)
-    #     # self.model.to(self.device)
-    #     self.model.eval()
+    def train_metrics_personalized(self):
+        trainloader = self.load_train_data()
+        self.update_parameters(self.model, self.personalized_params)
+        # self.model.to(self.device)
+        self.model.eval()
 
-    #     train_acc = 0
-    #     train_num = 0
-    #     loss = 0
-    #     for x, y in trainloaderfull:
-    #         if type(x) == type([]):
-    #             x[0] = x[0].to(self.device)
-    #         else:
-    #             x = x.to(self.device)
-    #         y = y.to(self.device)
-    #         output = self.model(x)
-    #         train_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
-    #         train_num += y.shape[0]
-    #         loss += self.loss(output, y).item() * y.shape[0]
+        train_acc = 0
+        train_num = 0
+        losses = 0
+        with torch.no_grad():
+            for x, y in trainloader:
+                if type(x) == type([]):
+                    x[0] = x[0].to(self.device)
+                else:
+                    x = x.to(self.device)
+                y = y.to(self.device)
+                output = self.model(x)
+                loss = self.loss(output, y).item()
 
-    #     # self.model.cpu()
+                lm = torch.cat([p.data.view(-1) for p in self.local_params], dim=0)
+                pm = torch.cat([p.data.view(-1) for p in self.personalized_params], dim=0)
+                loss += 0.5 * self.lamda * torch.norm(lm-pm, p=2)
+
+                train_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
+                
+                train_num += y.shape[0]
+                losses += loss.item() * y.shape[0]
+
+        # self.model.cpu()
         
-    #     return train_acc, loss, train_num
+        return train_acc, losses, train_num

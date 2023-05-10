@@ -9,7 +9,7 @@ class Local(Server):
 
         # select slow clients
         self.set_slow_clients()
-        self.set_clients(args, clientAVG)
+        self.set_clients(clientAVG)
 
         print(f"\nJoin ratio / total clients: {self.join_ratio} / {self.num_clients}")
         print("Finished creating server and clients.")
@@ -34,6 +34,9 @@ class Local(Server):
             #            for client in self.selected_clients]
             # [t.start() for t in threads]
             # [t.join() for t in threads]
+
+            if self.auto_break and self.check_done(acc_lss=[self.rs_test_acc], top_cnt=self.top_cnt):
+                break
 
 
         print("\nBest accuracy.")

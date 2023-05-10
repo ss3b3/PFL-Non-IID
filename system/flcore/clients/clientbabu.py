@@ -9,9 +9,6 @@ from flcore.clients.clientbase import Client
 class clientBABU(Client):
     def __init__(self, args, id, train_samples, test_samples, **kwargs):
         super().__init__(args, id, train_samples, test_samples, **kwargs)
-        
-        self.loss = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.base.parameters(), lr=self.learning_rate)
 
         self.fine_tuning_steps = args.fine_tuning_steps
 
@@ -27,7 +24,7 @@ class clientBABU(Client):
         # self.model.to(self.device)
         self.model.train()
 
-        max_local_steps = self.local_steps
+        max_local_steps = self.local_epochs
         if self.train_slow:
             max_local_steps = np.random.randint(1, max_local_steps // 2)
 
@@ -40,13 +37,16 @@ class clientBABU(Client):
                 y = y.to(self.device)
                 if self.train_slow:
                     time.sleep(0.1 * np.abs(np.random.rand()))
-                self.optimizer.zero_grad()
                 output = self.model(x)
                 loss = self.loss(output, y)
+                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
         # self.model.cpu()
+
+        if self.learning_rate_decay:
+            self.learning_rate_scheduler.step()
 
         self.train_time_cost['num_rounds'] += 1
         self.train_time_cost['total_cost'] += time.time() - start_time
@@ -78,9 +78,9 @@ class clientBABU(Client):
                 else:
                     x = x.to(self.device)
                 y = y.to(self.device)
-                self.optimizer.zero_grad()
                 output = self.model(x)
                 loss = self.loss(output, y)
+                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 

@@ -1,21 +1,22 @@
+from collections import defaultdict
 import copy
 import torch
 import torch.nn as nn
 import numpy as np
 import time
-import torch.nn.functional as F
 from flcore.clients.clientbase import Client
 
 
-class clientMOON(Client):
+class clientDistill(Client):
     def __init__(self, args, id, train_samples, test_samples, **kwargs):
         super().__init__(args, id, train_samples, test_samples, **kwargs)
 
-        self.tau = args.tau
-        self.mu = args.mu
+        self.logits = None
+        self.global_logits = None
+        self.loss_mse = nn.MSELoss()
 
-        self.global_model = None
-        self.old_model = copy.deepcopy(self.model)
+        self.lamda = args.lamda
+
 
     def train(self):
         trainloader = self.load_train_data()
@@ -28,6 +29,7 @@ class clientMOON(Client):
         if self.train_slow:
             max_local_steps = np.random.randint(1, max_local_steps // 2)
 
+        logits = defaultdict(list)
         for step in range(max_local_steps):
             for i, (x, y) in enumerate(trainloader):
                 if type(x) == type([]):
@@ -37,21 +39,28 @@ class clientMOON(Client):
                 y = y.to(self.device)
                 if self.train_slow:
                     time.sleep(0.1 * np.abs(np.random.rand()))
-                rep = self.model.base(x)
-                output = self.model.head(rep)
+                output = self.model(x)
                 loss = self.loss(output, y)
 
-                rep_old = self.old_model.base(x).detach()
-                rep_global = self.global_model.base(x).detach()
-                loss_con = - torch.log(torch.exp(F.cosine_similarity(rep, rep_global) / self.tau) / (torch.exp(F.cosine_similarity(rep, rep_global) / self.tau) + torch.exp(F.cosine_similarity(rep, rep_old) / self.tau)))
-                loss += self.mu * torch.mean(loss_con)
+                if self.global_logits != None:
+                    logit_new = copy.deepcopy(output.detach())
+                    for i, yy in enumerate(y):
+                        y_c = yy.item()
+                        if type(self.global_logits[y_c]) != type([]):
+                            logit_new[i, :] = self.global_logits[y_c].data
+                    loss += self.loss_mse(logit_new, output) * self.lamda
+
+                for i, yy in enumerate(y):
+                    y_c = yy.item()
+                    logits[y_c].append(output[i, :].detach().data)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
         # self.model.cpu()
-        self.old_model = copy.deepcopy(self.model)
+
+        self.logits = agg_func(logits)
 
         if self.learning_rate_decay:
             self.learning_rate_scheduler.step()
@@ -60,11 +69,8 @@ class clientMOON(Client):
         self.train_time_cost['total_cost'] += time.time() - start_time
 
 
-    def set_parameters(self, model):
-        for new_param, old_param in zip(model.parameters(), self.model.parameters()):
-            old_param.data = new_param.data.clone()
-
-        self.global_model = model
+    def set_logits(self, global_logits):
+        self.global_logits = copy.deepcopy(global_logits)
 
     def train_metrics(self):
         trainloader = self.load_train_data()
@@ -81,14 +87,17 @@ class clientMOON(Client):
                 else:
                     x = x.to(self.device)
                 y = y.to(self.device)
-                rep = self.model.base(x)
-                output = self.model.head(rep)
+                output = self.model(x)
                 loss = self.loss(output, y)
 
-                rep_old = self.old_model.base(x).detach()
-                rep_global = self.global_model.base(x).detach()
-                loss_con = - torch.log(torch.exp(F.cosine_similarity(rep, rep_global) / self.tau) / (torch.exp(F.cosine_similarity(rep, rep_global) / self.tau) + torch.exp(F.cosine_similarity(rep, rep_old) / self.tau)))
-                loss += self.mu * torch.mean(loss_con)
+                if self.global_logits != None:
+                    logit_new = copy.deepcopy(output.detach())
+                    for i, yy in enumerate(y):
+                        y_c = yy.item()
+                        if type(self.global_logits[y_c]) != type([]):
+                            logit_new[i, :] = self.global_logits[y_c].data
+                    loss += self.loss_mse(logit_new, output) * self.lamda
+                    
                 train_num += y.shape[0]
                 losses += loss.item() * y.shape[0]
 
@@ -96,3 +105,21 @@ class clientMOON(Client):
         # self.save_model(self.model, 'model')
 
         return losses, train_num
+
+
+# https://github.com/yuetan031/fedlogit/blob/main/lib/utils.py#L205
+def agg_func(logits):
+    """
+    Returns the average of the weights.
+    """
+
+    for [label, logit_list] in logits.items():
+        if len(logit_list) > 1:
+            logit = 0 * logit_list[0].data
+            for i in logit_list:
+                logit += i.data
+            logits[label] = logit / len(logit_list)
+        else:
+            logits[label] = logit_list[0]
+
+    return logits

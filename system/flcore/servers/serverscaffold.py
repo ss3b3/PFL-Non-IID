@@ -1,25 +1,35 @@
+import copy
 import random
-from flcore.clients.clientbabu import clientBABU
+import time
+import torch
+from flcore.clients.clientscaffold import clientSCAFFOLD
 from flcore.servers.serverbase import Server
 from threading import Thread
 
 
-class FedBABU(Server):
+class SCAFFOLD(Server):
     def __init__(self, args, times):
         super().__init__(args, times)
 
         # select slow clients
         self.set_slow_clients()
-        self.set_clients(clientBABU)
+        self.set_clients(clientSCAFFOLD)
 
         print(f"\nJoin ratio / total clients: {self.join_ratio} / {self.num_clients}")
         print("Finished creating server and clients.")
 
         # self.load_model()
+        self.Budget = []
+
+        self.server_learning_rate = args.server_learning_rate
+        self.global_c = []
+        for param in self.global_model.parameters():
+            self.global_c.append(torch.zeros_like(param))
 
 
     def train(self):
         for i in range(self.global_rounds+1):
+            s_t = time.time()
             self.selected_clients = self.select_clients()
             self.send_models()
 
@@ -41,6 +51,9 @@ class FedBABU(Server):
                 self.call_dlg(i)
             self.aggregate_parameters()
 
+            self.Budget.append(time.time() - s_t)
+            print('-'*25, 'time cost', '-'*25, self.Budget[-1])
+
             if self.auto_break and self.check_done(acc_lss=[self.rs_test_acc], top_cnt=self.top_cnt):
                 break
 
@@ -48,21 +61,30 @@ class FedBABU(Server):
         # self.print_(max(self.rs_test_acc), max(
         #     self.rs_train_acc), min(self.rs_train_loss))
         print(max(self.rs_test_acc))
-
-        for client in self.clients:
-            client.fine_tune()
-        print("\n-------------Evaluate fine-tuned personalized models-------------")
-        self.evaluate()
+        print("\nAverage time cost per round.")
+        print(sum(self.Budget[1:])/len(self.Budget[1:]))
 
         self.save_results()
         self.save_global_model()
 
         if self.num_new_clients > 0:
             self.eval_new_clients = True
-            self.set_new_clients(clientBABU)
+            self.set_new_clients(clientSCAFFOLD)
             print(f"\n-------------Fine tuning round-------------")
             print("\nEvaluate new clients")
             self.evaluate()
+
+
+    def send_models(self):
+        assert (len(self.clients) > 0)
+
+        for client in self.clients:
+            start_time = time.time()
+            
+            client.set_parameters(self.global_model, self.global_c)
+
+            client.send_time_cost['num_rounds'] += 1
+            client.send_time_cost['total_cost'] += 2 * (time.time() - start_time)
 
     def receive_models(self):
         assert (len(self.selected_clients) > 0)
@@ -72,8 +94,9 @@ class FedBABU(Server):
 
         self.uploaded_ids = []
         self.uploaded_weights = []
-        self.uploaded_models = []
         tot_samples = 0
+        # self.delta_ys = []
+        # self.delta_cs = []
         for client in active_clients:
             try:
                 client_time_cost = client.train_time_cost['total_cost'] / client.train_time_cost['num_rounds'] + \
@@ -84,13 +107,34 @@ class FedBABU(Server):
                 tot_samples += client.train_samples
                 self.uploaded_ids.append(client.id)
                 self.uploaded_weights.append(client.train_samples)
-                self.uploaded_models.append(client.model.base)
+                # self.delta_ys.append(client.delta_y)
+                # self.delta_cs.append(client.delta_c)
         for i, w in enumerate(self.uploaded_weights):
             self.uploaded_weights[i] = w / tot_samples
+
+    def aggregate_parameters(self):        
+        # original version
+        # for dy, dc in zip(self.delta_ys, self.delta_cs):
+        #     for server_param, client_param in zip(self.global_model.parameters(), dy):
+        #         server_param.data += client_param.data.clone() / self.num_join_clients * self.server_learning_rate
+        #     for server_param, client_param in zip(self.global_c, dc):
+        #         server_param.data += client_param.data.clone() / self.num_clients
+        
+        # save GPU memory
+        global_model = copy.deepcopy(self.global_model)
+        global_c = copy.deepcopy(self.global_c)
+        for cid in self.uploaded_ids:
+            dy, dc = self.clients[cid].delta_yc()
+            for server_param, client_param in zip(global_model.parameters(), dy):
+                server_param.data += client_param.data.clone() / self.num_join_clients * self.server_learning_rate
+            for server_param, client_param in zip(global_c, dc):
+                server_param.data += client_param.data.clone() / self.num_clients
+        self.global_model = global_model
+        self.global_c = global_c
 
     # fine-tuning on new clients
     def fine_tuning_new_clients(self):
         for client in self.new_clients:
-            client.set_parameters(self.global_model)
+            client.set_parameters(self.global_model, self.global_c)
             for e in range(self.fine_tuning_epoch):
-                client.fine_tune()
+                client.train()

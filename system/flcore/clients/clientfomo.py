@@ -18,9 +18,6 @@ class clientFomo(Client):
         self.received_models = []
         self.weight_vector = torch.zeros(self.num_clients, device=self.device)
 
-        self.loss = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)
-
         self.val_ratio = 0.2
         self.train_samples = self.train_samples * (1-self.val_ratio)
 
@@ -35,7 +32,7 @@ class clientFomo(Client):
         # self.model.to(self.device)
         self.model.train()
         
-        max_local_steps = self.local_steps
+        max_local_steps = self.local_epochs
         if self.train_slow:
             max_local_steps = np.random.randint(1, max_local_steps // 2)
 
@@ -48,13 +45,16 @@ class clientFomo(Client):
                 y = y.to(self.device)
                 if self.train_slow:
                     time.sleep(0.1 * np.abs(np.random.rand()))
-                self.optimizer.zero_grad()
                 output = self.model(x)
                 loss = self.loss(output, y)
+                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
         # self.model.cpu()
+
+        if self.learning_rate_decay:
+            self.learning_rate_scheduler.step()
 
         self.train_time_cost['num_rounds'] += 1
         self.train_time_cost['total_cost'] += time.time() - start_time

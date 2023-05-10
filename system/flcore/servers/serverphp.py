@@ -11,7 +11,7 @@ class FedPHP(Server):
 
         # select slow clients
         self.set_slow_clients()
-        self.set_clients(args, clientPHP)
+        self.set_clients(clientPHP)
 
         print(f"\nJoin ratio / total clients: {self.join_ratio} / {self.num_clients}")
         print("Finished creating server and clients.")
@@ -39,7 +39,12 @@ class FedPHP(Server):
             # [t.join() for t in threads]
 
             self.receive_models()
+            if self.dlg_eval and i%self.dlg_gap == 0:
+                self.call_dlg(i)
             self.aggregate_parameters()
+
+            if self.auto_break and self.check_done(acc_lss=[self.rs_test_acc], top_cnt=self.top_cnt):
+                break
 
         print("\nBest accuracy.")
         # self.print_(max(self.rs_test_acc), max(
@@ -48,14 +53,28 @@ class FedPHP(Server):
 
         self.save_results()
 
+        if self.num_new_clients > 0:
+            self.eval_new_clients = True
+            self.set_new_clients(clientPHP)
+            print(f"\n-------------Fine tuning round-------------")
+            print("\nEvaluate new clients")
+            self.evaluate()
+
 
     def send_models(self, R):
         assert (len(self.selected_clients) > 0)
 
-        for client in self.selected_clients:
+        for client in self.clients:
             start_time = time.time()
 
             client.set_parameters(self.global_model, R)
 
             client.send_time_cost['num_rounds'] += 1
             client.send_time_cost['total_cost'] += 2 * (time.time() - start_time)
+
+    # fine-tuning on new clients
+    def fine_tuning_new_clients(self):
+        for client in self.new_clients:
+            client.set_parameters(self.global_model, self.global_rounds)
+            for e in range(self.fine_tuning_epoch):
+                client.train()

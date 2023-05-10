@@ -12,12 +12,13 @@ from sklearn import metrics
 class clientROD(Client):
     def __init__(self, args, id, train_samples, test_samples, **kwargs):
         super().__init__(args, id, train_samples, test_samples, **kwargs)
-        
-        self.loss = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)
-        
-        self.pred = copy.deepcopy(self.model.head)
-        self.opt_pred = torch.optim.SGD(self.pred.parameters(), lr=self.learning_rate)
+                
+        self.head = copy.deepcopy(self.model.head)
+        self.opt_head = torch.optim.SGD(self.head.parameters(), lr=self.learning_rate)
+        self.learning_rate_scheduler_head = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer=self.opt_head, 
+            gamma=args.learning_rate_decay_gamma
+        )
 
         self.sample_per_class = torch.zeros(self.num_classes)
         trainloader = self.load_train_data()
@@ -34,7 +35,7 @@ class clientROD(Client):
         # self.model.to(self.device)
         self.model.train()
 
-        max_local_steps = self.local_steps
+        max_local_steps = self.local_epochs
         if self.train_slow:
             max_local_steps = np.random.randint(1, max_local_steps // 2)
 
@@ -52,13 +53,17 @@ class clientROD(Client):
                 loss_bsm.backward()
                 self.optimizer.step()
 
-                out_p = self.pred(rep.detach())
+                out_p = self.head(rep.detach())
                 loss = self.loss(out_g.detach() + out_p, y)
-                self.opt_pred.zero_grad()
+                self.opt_head.zero_grad()
                 loss.backward()
-                self.opt_pred.step()
+                self.opt_head.step()
 
         # self.model.cpu()
+
+        if self.learning_rate_decay:
+            self.learning_rate_scheduler.step()
+            self.learning_rate_scheduler_head.step()
 
         self.train_time_cost['num_rounds'] += 1
         self.train_time_cost['total_cost'] += time.time() - start_time
@@ -83,7 +88,7 @@ class clientROD(Client):
                 y = y.to(self.device)
                 rep = self.model.base(x)
                 out_g = self.model.head(rep)
-                out_p = self.pred(rep.detach())
+                out_p = self.head(rep.detach())
                 output = out_g.detach() + out_p
 
                 test_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
@@ -104,6 +109,34 @@ class clientROD(Client):
         auc = metrics.roc_auc_score(y_true, y_prob, average='micro')
         
         return test_acc, test_num, auc
+
+    def train_metrics(self):
+        trainloader = self.load_train_data()
+        # self.model = self.load_model('model')
+        # self.model.to(self.device)
+        self.model.eval()
+
+        train_num = 0
+        losses = 0
+        with torch.no_grad():
+            for x, y in trainloader:
+                if type(x) == type([]):
+                    x[0] = x[0].to(self.device)
+                else:
+                    x = x.to(self.device)
+                y = y.to(self.device)
+                rep = self.model.base(x)
+                out_g = self.model.head(rep)
+                out_p = self.head(rep.detach())
+                output = out_g.detach() + out_p
+                loss = self.loss(output, y)
+                train_num += y.shape[0]
+                losses += loss.item() * y.shape[0]
+
+        # self.model.cpu()
+        # self.save_model(self.model, 'model')
+
+        return losses, train_num
 
 
 # https://github.com/jiawei-ren/BalancedMetaSoftmax-Classification
